@@ -79,7 +79,7 @@ if st.button("Generar Excel"):
             # --- Llenar los campos de texto ---
             hoja['G7'] = ejecutor
             hoja['C5'] = direccion
-            hoja['C6'] = fecha_visita.strftime("%Y-%m-%d")
+            hoja['C6'] = fecha_visita.strftime("%d-%m-%Y")
             hoja['H7'] = telefono
 
             # --- Insertar imágenes y descripciones ---
@@ -148,7 +148,7 @@ if st.button("Generar Excel"):
             st.download_button(
                 label="Descargar Excel Generado",
                 data=buffer,
-                file_name="REGISTRO FOTOGRAFICO "+fecha_visita+" "+direccion+".xlsx",
+                file_name=f"Registro_fotografico_{fecha_visita.strftime('%d-%m-%Y')} {direccion}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
 
