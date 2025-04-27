@@ -148,7 +148,7 @@ if st.button("Generar Excel"):
             st.download_button(
                 label="Descargar Excel Generado",
                 data=buffer,
-                file_name="formato_llenado.xlsx",
+                file_name="REGISTRO FOTOGRAFICO "+fecha_visita+" "+direccion+".xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
 
