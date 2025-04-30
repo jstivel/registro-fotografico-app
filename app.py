@@ -40,7 +40,7 @@ def calcular_offset(area_cm, img_cm):
 # --- Interfaz de Usuario en Streamlit ---
 st.title("Registro fotografico")
 
-formato = ["Preventivo", "clientes interno", "clientes externo"]
+formato = ["Preventivo", "Recorredor", "clientes interno", "clientes externo"]
 formato_seleccionado = st.radio("Selecciona el formato:", formato)
 
 opciones = ["BRAYAN STIVEN SALAMANCA CASTAÑEDA", "JUAN CARLOS RODRIGUEZ CHIQUILLO", "YOVANNI GOMEZ PEÑA", "MICHAEL ESTEBAN URQUIJO LOPEZ", 
@@ -54,6 +54,10 @@ map_telefono = {
             "JOHN EZEQUIEL TANGARIFE ARENAS":"3118859551"}
 
 ejecutor = st.selectbox("Ejecutor:", opciones)
+
+if formato_seleccionado == "clientes interno" or formato_seleccionado == "clientes externo":
+    cliente = st.text_input("Nombre del sitio:")
+
 telefono = map_telefono.get(ejecutor, "")
 direccion = st.text_input("DIRECCIÓN:")
 fecha_visita = st.date_input("FECHA DE LA VISITA:")
@@ -94,8 +98,9 @@ if st.button("Generar Excel"):
             celda_fecha = 'C6'
             celda_tel = 'H7'
 
-            if formato_seleccionado == "Preventivo":
-                ruta_excel = 'RF_PREVENTIVO.XLSX'                            
+            if formato_seleccionado == "Preventivo" or formato_seleccionado == "Recorredor":
+                ruta_excel = 'RF_PREVENTIVO.XLSX'  
+                         
 
             elif formato_seleccionado == "clientes interno":
                 ruta_excel = 'RF_CLIENTE_INTERNO.xlsx'
@@ -111,16 +116,22 @@ if st.button("Generar Excel"):
                 celda_ejecutor = 'G8'
                 celda_dirección = 'C6'
                 celda_fecha = 'C7'
-                celda_tel = 'H8'          
+                celda_tel = 'H8'                        
             
             libro = load_workbook(ruta_excel)
             hoja = libro.active
 
             # --- Llenar los campos de texto ---
+            if formato_seleccionado == "Recorredor":
+                hoja['A4'] = 'REGISTRO FOTOGRÁFICO RECORREDOR'
+                hoja['D7'] = 'RECORREDOR'
+            
             hoja[celda_ejecutor] = ejecutor
             hoja[celda_dirección] = direccion
             hoja[celda_fecha] = fecha_visita.strftime("%d-%m-%Y")
             hoja[celda_tel] = telefono            
+            if formato_seleccionado != "Preventivo":
+                hoja['C5'] = cliente  
             
 
             for i, archivo_subido in enumerate(uploaded_files):
