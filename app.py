@@ -38,12 +38,26 @@ def calcular_offset(area_cm, img_cm):
     return c2e(delta_cm)
 
 # --- Interfaz de Usuario en Streamlit ---
-st.title("Aplicación para Llenar Formato Excel")
+st.title("Registro fotografico")
 
-ejecutor = st.text_input("EJECUTOR:")
+formato = ["Preventivo", "clientes interno", "clientes externo"]
+formato_seleccionado = st.radio("Selecciona el formato:", formato)
+
+opciones = ["BRAYAN STIVEN SALAMANCA CASTAÑEDA", "JUAN CARLOS RODRIGUEZ CHIQUILLO", "YOVANNI GOMEZ PEÑA", "MICHAEL ESTEBAN URQUIJO LOPEZ", 
+            "FABIAN DAVID CIFUENTES GRUESO","JOHN EZEQUIEL TANGARIFE ARENAS"]
+map_telefono = {
+            "BRAYAN STIVEN SALAMANCA CASTAÑEDA":"3133977853", 
+            "JUAN CARLOS RODRIGUEZ CHIQUILLO":"3214522373", 
+            "YOVANNI GOMEZ PEÑA":"3112973928", 
+            "MICHAEL ESTEBAN URQUIJO LOPEZ":"3114669376", 
+            "FABIAN DAVID CIFUENTES GRUESO":"3112042566",
+            "JOHN EZEQUIEL TANGARIFE ARENAS":"3118859551"}
+
+ejecutor = st.selectbox("Ejecutor:", opciones)
+telefono = map_telefono.get(ejecutor, "")
 direccion = st.text_input("DIRECCIÓN:")
 fecha_visita = st.date_input("FECHA DE LA VISITA:")
-telefono = st.text_input("TELEFONO:")
+telefono = st.text_input("TELEFONO:", value=telefono, disabled=True)
 
 uploaded_files = st.file_uploader("Subir Registros Fotográficos", accept_multiple_files=True, type=["png", "jpg", "jpeg"])
 descripciones = [""] * len(uploaded_files)
@@ -72,19 +86,42 @@ if st.button("Generar Excel"):
     if ejecutor and direccion and fecha_visita and telefono and uploaded_files:
         try:
             # --- Cargar el archivo Excel existente ---
-            ruta_excel = 'REGISTRO FOTOGRAFICO.XLSX'
+            ruta_excel = ""
+            fila_foto_inicio = 8
+            columna_foto_inicio = 1  # Columna A
+            celda_ejecutor = 'G7'
+            celda_dirección = 'C5'
+            celda_fecha = 'C6'
+            celda_tel = 'H7'
+
+            if formato_seleccionado == "Preventivo":
+                ruta_excel = 'RF_PREVENTIVO.XLSX'                            
+
+            elif formato_seleccionado == "clientes interno":
+                ruta_excel = 'RF_CLIENTE_INTERNO.XLSX'
+                fila_foto_inicio = 10     # Fila 10
+                celda_ejecutor = 'G8'
+                celda_dirección = 'C6'
+                celda_fecha = 'C7'
+                celda_tel = 'H8'
+
+            elif formato_seleccionado == "clientes externo":
+                ruta_excel = 'RF_CLIENTE_EXTERNO.XLSX'
+                fila_foto_inicio = 10     # Fila 10 
+                celda_ejecutor = 'G8'
+                celda_dirección = 'C6'
+                celda_fecha = 'C7'
+                celda_tel = 'H8'          
+            
             libro = load_workbook(ruta_excel)
             hoja = libro.active
 
             # --- Llenar los campos de texto ---
-            hoja['G7'] = ejecutor
-            hoja['C5'] = direccion
-            hoja['C6'] = fecha_visita.strftime("%d-%m-%Y")
-            hoja['H7'] = telefono
-
-            # --- Insertar imágenes y descripciones ---
-            fila_foto_inicio = 8
-            columna_foto_inicio = 1  # Columna A
+            hoja[celda_ejecutor] = ejecutor
+            hoja[celda_dirección] = direccion
+            hoja[celda_fecha] = fecha_visita.strftime("%d-%m-%Y")
+            hoja[celda_tel] = telefono            
+            
 
             for i, archivo_subido in enumerate(uploaded_files):
                 # --- Redimensionar la imagen con Pillow ---
