@@ -98,7 +98,7 @@ if st.button("Generar Excel"):
                 ruta_excel = 'RF_PREVENTIVO.XLSX'                            
 
             elif formato_seleccionado == "clientes interno":
-                ruta_excel = 'RF_CLIENTE_INTERNO.XLSX'
+                ruta_excel = 'RF_CLIENTE_INTERNO.xlsx'
                 fila_foto_inicio = 10     # Fila 10
                 celda_ejecutor = 'G8'
                 celda_dirección = 'C6'
@@ -106,7 +106,7 @@ if st.button("Generar Excel"):
                 celda_tel = 'H8'
 
             elif formato_seleccionado == "clientes externo":
-                ruta_excel = 'RF_CLIENTE_EXTERNO.XLSX'
+                ruta_excel = 'RF_CLIENTE_EXTERNO.xlsx'
                 fila_foto_inicio = 10     # Fila 10 
                 celda_ejecutor = 'G8'
                 celda_dirección = 'C6'
