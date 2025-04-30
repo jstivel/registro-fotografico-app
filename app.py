@@ -40,8 +40,13 @@ def calcular_offset(area_cm, img_cm):
 # --- Interfaz de Usuario en Streamlit ---
 st.title("Registro fotografico")
 
-formato = ["Preventivo", "Recorredor", "clientes interno", "clientes externo"]
+formato = ["Preventivo", "Recorredor", "clientes interno", "clientes externo","Factibilidades"]
 formato_seleccionado = st.radio("Selecciona el formato:", formato)
+
+if formato_seleccionado == "Factibilidades":
+    AREA_HEIGHT_CM = 5.44
+    AREA_WIDTH_CM = 7.76
+
 
 opciones = ["BRAYAN STIVEN SALAMANCA CASTAÑEDA", "JUAN CARLOS RODRIGUEZ CHIQUILLO", "YOVANNI GOMEZ PEÑA", "MICHAEL ESTEBAN URQUIJO LOPEZ", 
             "FABIAN DAVID CIFUENTES GRUESO","JOHN EZEQUIEL TANGARIFE ARENAS","ELIAS ALBERTO CADENA AGUDELO","NICOLAS EDUARDO ALVARADO CASTAÑO",
@@ -66,7 +71,7 @@ map_telefono = {
 
 ejecutor = st.selectbox("Ejecutor:", opciones)
 
-if formato_seleccionado == "clientes interno" or formato_seleccionado == "clientes externo":
+if formato_seleccionado == "clientes interno" or formato_seleccionado == "clientes externo" or formato_seleccionado == "Factibilidades":
     cliente = st.text_input("Nombre del sitio:")
 
 telefono = map_telefono.get(ejecutor, "")
@@ -90,17 +95,29 @@ if ejecutor or direccion or fecha_visita or telefono or uploaded_files:
         st.write(f"**Teléfono:** {telefono}")
     if uploaded_files:
         st.write("**Registros Fotográficos:**")
-        for i, file in enumerate(uploaded_files):
-            col_preview, col_descripcion = st.columns([1, 2])
-            with col_preview:
-                st.image(file, caption=f"Foto {i+1}", width=100)
-            with col_descripcion:
-                descripciones[i] = st.text_input(f"Descripción para la Foto {i+1}:", key=f"descripcion_{i}")
+        if formato_seleccionado == "Factibilidades":
+            num_filas_preview = (len(uploaded_files) + 2) // 3  # Calcular cuántas filas de 3 fotos necesitaremos
+            for i in range(num_filas_preview):
+                cols = st.columns(3)
+                for j in range(3):
+                    idx = i * 3 + j
+                    if idx < len(uploaded_files):
+                        with cols[j]:
+                            st.image(uploaded_files[idx], caption=f"Foto {idx+1}", width=100)
+                descripcion_key = f"descripcion_factibilidad_{i}"
+                descripciones.extend([""] * 3) # Asegurar que haya espacio en la lista descripciones
+                descripciones[i*3 : (i+1)*3] = [st.text_input(f"Descripción para Fotos {(i*3)+1} a {(i+1)*3}:", key=descripcion_key)] * 3
+        else:
+            for i, file in enumerate(uploaded_files):
+                col_preview, col_descripcion = st.columns([1, 2])
+                with col_preview:
+                    st.image(file, caption=f"Foto {i+1}", width=100)
+                with col_descripcion:
+                    descripciones[i] = st.text_input(f"Descripción para la Foto {i+1}:", key=f"descripcion_{i}")
 
 if st.button("Generar Excel"):
     if ejecutor and direccion and fecha_visita and telefono and uploaded_files:
         try:
-            # --- Cargar el archivo Excel existente ---
             ruta_excel = ""
             fila_foto_inicio = 8
             columna_foto_inicio = 1  # Columna A
@@ -110,12 +127,11 @@ if st.button("Generar Excel"):
             celda_tel = 'H7'
 
             if formato_seleccionado == "Preventivo" or formato_seleccionado == "Recorredor":
-                ruta_excel = 'RF_PREVENTIVO.XLSX'  
-                         
+                ruta_excel = 'RF_PREVENTIVO.XLSX'
 
             elif formato_seleccionado == "clientes interno":
                 ruta_excel = 'RF_CLIENTE_INTERNO.xlsx'
-                fila_foto_inicio = 10     # Fila 10
+                fila_foto_inicio = 10
                 celda_ejecutor = 'G8'
                 celda_dirección = 'C6'
                 celda_fecha = 'C7'
@@ -123,12 +139,21 @@ if st.button("Generar Excel"):
 
             elif formato_seleccionado == "clientes externo":
                 ruta_excel = 'RF_CLIENTE_EXTERNO.xlsx'
-                fila_foto_inicio = 10     # Fila 10 
+                fila_foto_inicio = 10
                 celda_ejecutor = 'G8'
                 celda_dirección = 'C6'
                 celda_fecha = 'C7'
-                celda_tel = 'H8'                        
-            
+                celda_tel = 'H8'
+
+            elif formato_seleccionado == "Factibilidades":
+                ruta_excel = 'RF_FACTIBILIDADES.xlsx'
+                fila_foto_inicio = 12
+                columna_foto_inicio = 1 # Inicial en A
+                celda_ejecutor = 'B9' # Ajusta según tu formato
+                celda_dirección = 'B7' # Ajusta según tu formato
+                celda_fecha = 'B8'   # Ajusta según tu formato
+                celda_tel = 'D9'     # Ajusta según tu formato
+
             libro = load_workbook(ruta_excel)
             hoja = libro.active
 
@@ -136,81 +161,80 @@ if st.button("Generar Excel"):
             if formato_seleccionado == "Recorredor":
                 hoja['A4'] = 'REGISTRO FOTOGRÁFICO RECORREDOR'
                 hoja['D7'] = 'RECORREDOR'
-            
+
             hoja[celda_ejecutor] = ejecutor
             hoja[celda_dirección] = direccion
             hoja[celda_fecha] = fecha_visita.strftime("%d-%m-%Y")
-            hoja[celda_tel] = telefono            
+            hoja[celda_tel] = telefono
             if formato_seleccionado == "clientes interno" or formato_seleccionado == "clientes externo":
-                hoja['C5'] = cliente  
-            
+                hoja['C5'] = cliente
+            if formato_seleccionado == "Factibilidades":
+                hoja['B6'] = cliente
 
+            fila_actual_foto = fila_foto_inicio
             for i, archivo_subido in enumerate(uploaded_files):
-                # --- Redimensionar la imagen con Pillow ---
+                # --- Redimensionar la imagen ---
                 img_pil = PILImage.open(archivo_subido)
                 img_redimensionada = redimensionar_imagen(img_pil, AREA_WIDTH_CM, AREA_HEIGHT_CM)
                 img_width_cm, img_height_cm = img_redimensionada.size[0] * 2.54 / 96, img_redimensionada.size[1] * 2.54 / 96
 
-                # --- Convertir la imagen redimensionada para openpyxl ---
+                # --- Convertir la imagen para openpyxl ---
                 img_buffer = BytesIO()
                 img_redimensionada.save(img_buffer, format=img_pil.format)
                 img_buffer.seek(0)
                 img = Image(img_buffer)
 
-                # --- Calcular la celda de anclaje y el offset para centrar ---
-                if (i + 1) % 2 != 0:  # Foto en columna A
-                    col_idx = columna_foto_inicio - 1 # openpyxl usa índice base 0
-                    row_idx = fila_foto_inicio - 1
-                else:  # Foto en columna E
-                    col_idx = columna_foto_inicio + 4 - 1 # openpyxl usa índice base 0
-                    row_idx = fila_foto_inicio - 1
+                # --- Calcular la columna de anclaje para Factibilidades ---
+                if formato_seleccionado == "Factibilidades":
+                    if i % 3 == 0:
+                        col_idx = 0  # Columna A
+                    elif i % 3 == 1:
+                        col_idx = 3  # Columna D
+                    else:
+                        col_idx = 6  # Columna G
+                else: # Para otros formatos, la lógica original
+                    col_idx = (columna_foto_inicio - 1) + (4 * (i % 2))
+
+                row_idx = fila_actual_foto - 1
 
                 x_offset_emu = calcular_offset(AREA_WIDTH_CM, img_width_cm)
                 y_offset_emu = calcular_offset(AREA_HEIGHT_CM, img_height_cm)
 
                 # --- Definir el marcador de anclaje ---
-                marker = AnchorMarker(
-                    col=col_idx,
-                    colOff=x_offset_emu,
-                    row=row_idx,
-                    rowOff=y_offset_emu
-                )
-
-                # --- Definir el tamaño de la imagen (en EMUs) como un objeto XDRPositiveSize2D ---
-                
+                marker = AnchorMarker(col=col_idx, colOff=x_offset_emu, row=row_idx, rowOff=y_offset_emu)
                 size = XDRPositiveSize2D(cx=c2e(img_width_cm), cy=c2e(img_height_cm))
-
-                # --- Crear el anclaje de una celda ---
                 img.anchor = OneCellAnchor(_from=marker, ext=size)
-
-                # --- Añadir la imagen a la hoja ---
                 hoja.add_image(img)
 
-                # --- Calcular la celda unificada para la descripción ---
-                if (i + 1) % 2 != 0:
-                    celda_descripcion_inicio = f"B{fila_foto_inicio + 15}"
-                    celda_descripcion_fin = f"D{fila_foto_inicio + 16}"
-                else:
-                    celda_descripcion_inicio = f"F{fila_foto_inicio + 15}"
-                    celda_descripcion_fin = f"H{fila_foto_inicio + 16}"
-                    fila_foto_inicio += 17 # Saltar a la siguiente fila para la siguiente pareja
+                # --- Calcular la celda unificada para la descripción para Factibilidades ---
+                if formato_seleccionado == "Factibilidades":
+                    celda_descripcion_inicio = f"B{fila_actual_foto + 1}"
+                    celda_descripcion_fin = f"H{fila_actual_foto + 2}"
+                    hoja.merge_cells(f"{celda_descripcion_inicio}:{celda_descripcion_fin}")
+                    hoja[celda_descripcion_inicio] = descripciones[i]
+                    if (i + 1) % 3 == 0: # Saltar cada 3 imágenes (al final de la fila A, D, G)
+                        fila_actual_foto += 6
+                else: # Lógica de descripción para otros formatos
+                    if (i + 1) % 2 != 0:
+                        celda_descripcion_inicio = f"B{fila_actual_foto + 15}"
+                        celda_descripcion_fin = f"D{fila_actual_foto + 16}"
+                    else:
+                        celda_descripcion_inicio = f"F{fila_actual_foto + 15}"
+                        celda_descripcion_fin = f"H{fila_actual_foto + 16}"
+                        fila_actual_foto += 17
+                    hoja.merge_cells(f"{celda_descripcion_inicio}:{celda_descripcion_fin}")
+                    hoja[celda_descripcion_inicio] = descripciones[i]
 
-                hoja.merge_cells(f"{celda_descripcion_inicio}:{celda_descripcion_fin}")
-                hoja[celda_descripcion_inicio] = descripciones[i]
-
-            # --- Guardar el archivo modificado en memoria ---
+            # --- Guardar y ofrecer descarga ---
             buffer = BytesIO()
             libro.save(buffer)
             buffer.seek(0)
-
-            # --- Ofrecer la descarga ---
             st.download_button(
                 label="Descargar Excel Generado",
                 data=buffer,
                 file_name=f"Registro_fotografico_{fecha_visita.strftime('%d-%m-%Y')} {direccion}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-
             st.success("¡El archivo Excel ha sido generado exitosamente!")
 
         except Exception as e:
