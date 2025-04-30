@@ -130,7 +130,7 @@ if st.button("Generar Excel"):
             hoja[celda_dirección] = direccion
             hoja[celda_fecha] = fecha_visita.strftime("%d-%m-%Y")
             hoja[celda_tel] = telefono            
-            if formato_seleccionado != "Preventivo":
+            if formato_seleccionado == "clientes interno" or formato_seleccionado == "clientes externo":
                 hoja['C5'] = cliente  
             
 
