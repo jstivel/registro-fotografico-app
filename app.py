@@ -6,10 +6,21 @@ from openpyxl.utils.units import cm_to_EMU
 from io import BytesIO
 from PIL import Image as PILImage
 from openpyxl.drawing.xdr import XDRPositiveSize2D
+import io
+import base64
 
 # --- Configuración de las dimensiones del área de la imagen (en cm) ---
 AREA_HEIGHT_CM = 6.8
 AREA_WIDTH_CM = 9.42
+
+# ---  Función rotar imagen
+def rotate_image(image_bytes, angle):
+    """Rota una imagen en bytes y la devuelve en bytes."""
+    img = PILImage.open(io.BytesIO(image_bytes))
+    rotated_img = img.rotate(angle, expand=True)
+    img_buffer = io.BytesIO()
+    rotated_img.save(img_buffer, format=img.format)
+    return img_buffer.getvalue()
 
 # --- Función para redimensionar la imagen manteniendo la relación de aspecto ---
 def redimensionar_imagen(imagen_pil, max_ancho_cm, max_alto_cm, dpi=96):
@@ -96,24 +107,81 @@ if ejecutor or direccion or fecha_visita or telefono or uploaded_files:
     if uploaded_files:
         st.write("**Registros Fotográficos:**")
         if formato_seleccionado == "Factibilidades":
-            num_filas_preview = (len(uploaded_files) + 2) // 3  # Calcular cuántas filas de 3 fotos necesitaremos
+            num_filas_preview = (len(uploaded_files) + 2) // 3
             for i in range(num_filas_preview):
                 cols = st.columns(3)
                 for j in range(3):
                     idx = i * 3 + j
                     if idx < len(uploaded_files):
-                        with cols[j]:
-                            st.image(uploaded_files[idx], caption=f"Foto {idx+1}", width=100)
+                        file = uploaded_files[idx]
+                        key_rotacion = f"rotacion_{idx}"
+                        key_imagen_rotada = f"imagen_rotada_{idx}"
+
+                        if key_rotacion not in st.session_state:
+                            st.session_state[key_rotacion] = 0
+
+                        col_imagen_botones = st.columns([3, 2])
+                        with col_imagen_botones[0]:
+                            try:
+                                img = PILImage.open(file)
+                                if st.session_state[key_rotacion] != 0:
+                                    rotated_img = img.rotate(st.session_state[key_rotacion], expand=True)
+                                    st.image(rotated_img, caption=f"Foto {idx+1} (Rotada {st.session_state[key_rotacion]}°)", width=100)
+                                else:
+                                    st.image(img, caption=f"Foto {idx+1}", width=100)
+                            except Exception as e:
+                                st.error(f"Error: No se pudo abrir el archivo como imagen: {file.name}")
+
+                        with col_imagen_botones[1]:
+                            col_rot_left, col_rot_right = st.columns(2)
+                            with col_rot_left:
+                                if st.button("↺", key=f"rotar_der_{idx}"):
+                                    st.session_state[key_rotacion] = (st.session_state[key_rotacion] + 90) % 360
+                                    st.rerun()                                
+                            with col_rot_right:
+                                if st.button("↻", key=f"rotar_izq_{idx}"):
+                                    st.session_state[key_rotacion] = (st.session_state[key_rotacion] - 90) % 360
+                                    st.rerun()
+                                
                 descripcion_key = f"descripcion_factibilidad_{i}"
-                descripciones.extend([""] * 3) # Asegurar que haya espacio en la lista descripciones
-                descripciones[i*3 : (i+1)*3] = [st.text_input(f"Descripción para Fotos {(i*3)+1} a {(i+1)*3}:", key=descripcion_key)] * 3
+                descripciones.extend([""] * 3)
+                descripciones[i * 3: (i + 1) * 3] = [st.text_input(f"Descripción para Fotos {(i * 3) + 1} a {(i + 1) * 3}:", key=descripcion_key)] * 3
         else:
             for i, file in enumerate(uploaded_files):
-                col_preview, col_descripcion = st.columns([1, 2])
-                with col_preview:
-                    st.image(file, caption=f"Foto {i+1}", width=100)
-                with col_descripcion:
-                    descripciones[i] = st.text_input(f"Descripción para la Foto {i+1}:", key=f"descripcion_{i}")
+                key_rotacion = f"rotacion_{i}"
+                key_imagen_rotada = f"imagen_rotada_{i}"
+
+                if key_rotacion not in st.session_state:
+                    st.session_state[key_rotacion] = 0
+
+                col_imagen_botones = st.columns([3, 1])
+                with col_imagen_botones[0]:
+                    try:
+                        img = PILImage.open(file)
+                        if st.session_state[key_rotacion] != 0:
+                            rotated_img = img.rotate(st.session_state[key_rotacion], expand=True)
+                            st.image(rotated_img, caption=f"Foto {i+1} (Rotada {st.session_state[key_rotacion]}°)", width=100)
+                        else:
+                            st.image(img, caption=f"Foto {i+1}", width=100)
+                    except Exception as e:
+                        st.error(f"Error: No se pudo abrir el archivo como imagen: {file.name}")
+
+                with col_imagen_botones[1]:
+                    col_rot_left, col_rot_right = st.columns(2)
+                    with col_rot_left:
+                        if st.button("↺", key=f"rotar_der_{i}"):
+                            st.session_state[key_rotacion] = (st.session_state[key_rotacion] + 90) % 360
+                            st.rerun()
+                        
+                    with col_rot_right:
+                        if st.button("↻", key=f"rotar_izq_{i}"):
+                            st.session_state[key_rotacion] = (st.session_state[key_rotacion] - 90) % 360
+                            st.rerun()
+                        
+
+                descripciones[i] = st.text_input(f"Descripción para la Foto {i+1}:", key=f"descripcion_{i}")
+
+
 
 if st.button("Generar Excel"):
     if ejecutor and direccion and fecha_visita and telefono and uploaded_files:
@@ -173,14 +241,22 @@ if st.button("Generar Excel"):
 
             fila_actual_foto = fila_foto_inicio
             for i, archivo_subido in enumerate(uploaded_files):
+                key_rotacion = f"rotacion_{i}"
+                angulo_rotacion = st.session_state.get(key_rotacion, 0) # Obtener el ángulo de rotación
+
+                 # --- Rotar la imagen antes de redimensionar ---
+                img_pil_original = PILImage.open(archivo_subido)
+                img_pil_rotada = img_pil_original.rotate(angulo_rotacion, expand=True)
+
+
                 # --- Redimensionar la imagen ---
-                img_pil = PILImage.open(archivo_subido)
-                img_redimensionada = redimensionar_imagen(img_pil, AREA_WIDTH_CM, AREA_HEIGHT_CM)
+                #img_pil = PILImage.open(archivo_subido)
+                img_redimensionada = redimensionar_imagen(img_pil_rotada, AREA_WIDTH_CM, AREA_HEIGHT_CM)
                 img_width_cm, img_height_cm = img_redimensionada.size[0] * 2.54 / 96, img_redimensionada.size[1] * 2.54 / 96
 
                 # --- Convertir la imagen para openpyxl ---
                 img_buffer = BytesIO()
-                img_redimensionada.save(img_buffer, format=img_pil.format)
+                img_redimensionada.save(img_buffer, format="PNG")
                 img_buffer.seek(0)
                 img = Image(img_buffer)
 
