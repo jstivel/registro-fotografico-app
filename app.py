@@ -179,7 +179,7 @@ if ejecutor or direccion or fecha_visita or telefono or uploaded_files:
                             st.rerun()
                         
 
-                descripciones[i] = st.text_input(f"Descripción para la Foto {i+1}:", key=f"descripcion_{i}")
+                descripciones[i] = st.text_input(f"Descripción para la Foto {i+1}:", key=f"descripcion_{i}", value= file.name)
 
 
 
